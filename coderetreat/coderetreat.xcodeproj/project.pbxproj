@@ -418,6 +418,7 @@
 				82563A481A16E6AD000BE7F1 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		82563A491A16E6AD000BE7F1 /* Build configuration list for PBXNativeTarget "coderetreatTests" */ = {
 			isa = XCConfigurationList;
@@ -426,6 +427,7 @@
 				82563A4B1A16E6AD000BE7F1 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

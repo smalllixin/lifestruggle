@@ -15,15 +15,19 @@
 @property (nonatomic, assign) NSInteger worldTotalSize;
 
 @property (nonatomic, strong) NSTimer *timer;
+@property (nonatomic, strong) CADisplayLink *displayLink;
+@property (nonatomic, assign) BOOL isWorldStop;
 @end
+
+const NSInteger PointInPixels = 10;
 
 @implementation LifeStruggleView
 
 - (id)initWithFrame:(CGRect)frame
 {
     if (self = [super initWithFrame:frame]) {
-        _worldWidth = frame.size.width;
-        _worldHeight = frame.size.height;
+        _worldWidth = frame.size.width/PointInPixels;
+        _worldHeight = frame.size.height/PointInPixels;
         self.worldTotalSize = _worldWidth*_worldHeight;
         
         self.world = [[NSMutableArray alloc] initWithCapacity:self.worldTotalSize];
@@ -33,35 +37,60 @@
     return self;
 }
 
+- (void)fillPointWithTouch:(UITouch*)touch {
+    CGPoint touchLocation = [touch locationInView:self];
+    NSInteger idx = round(touchLocation.x/PointInPixels) + round(touchLocation.y/PointInPixels)*_worldWidth;
+    if (idx < _worldTotalSize)
+        _world[idx] = @(1);
+
+}
+
+- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    _isWorldStop = YES;
+    [self fillPointWithTouch:[[event allTouches] anyObject]];
+}
+
+- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    [self fillPointWithTouch:[[event allTouches] anyObject]];
+}
+
+- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    _isWorldStop = NO;
+}
+
+- (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event
+{
+    _isWorldStop = NO;
+}
+
 - (void)buildWorld
 {
     for (int i = 0; i < _worldTotalSize; i ++) {
         self.world[i] = @(0);
     }
-    for (int i = 1000; i <1000+ 200; i ++){
-        self.world[i] = @(1);
-    }
 }
 
 - (void)startWorld
 {
-    if (self.timer) {
-        [self.timer invalidate];
-    }
-    self.timer = [NSTimer scheduledTimerWithTimeInterval:1 target:self selector:@selector(timeTick:) userInfo:nil repeats:YES];
-    [self buildWorld];
+    CADisplayLink *displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(timeTick:)];
+    displayLink.frameInterval = 5;
+    [displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
+    _displayLink = displayLink;
 }
 
 - (void)stopWorld
 {
-    [self.timer invalidate];
+    _displayLink.paused = YES;
 }
 
 - (NSInteger)howManyLivesAroundWithX:(NSInteger)x y:(NSInteger)y
 {
     return [self cellAtX:x-1 y:y-1] +
             [self cellAtX:x y:y-1] +
-            [self cellAtX:x+1 y:y] +
+            [self cellAtX:x+1 y:y-1] +
             [self cellAtX:x-1 y:y] +
             [self cellAtX:x+1 y:y] +
             [self cellAtX:x-1 y:y+1] +
@@ -74,10 +103,10 @@
 {
     NSInteger x = idx%_worldWidth;
     NSInteger y = idx/_worldWidth;
-    BOOL isAlive = [self cellAtX:x y:y];
+    NSInteger isAlive = [self cellAtX:x y:y];
     NSInteger aliveCount = [self howManyLivesAroundWithX:x y:y];
     if (isAlive) {
-        if (aliveCount == 2|aliveCount == 3) {
+        if (aliveCount == 2 || aliveCount == 3) {
             return 1;
         } else {
             return 0;
@@ -93,22 +122,40 @@
 
 - (NSInteger)cellAtX:(NSInteger)x y:(NSInteger)y
 {
-    NSInteger idx = y * _worldWidth + x;
-    if (idx < 0 || idx >= _worldTotalSize) {
+    
+    if (x < 0 || y < 0 || x >= _worldWidth || y >= _worldHeight) {
         return 0;
     }
+    NSInteger idx = y * _worldWidth + x;
     return [_world[idx] integerValue];
 }
 
-- (void)timeTick:(NSTimer*)t
+- (void)dumpWorld
 {
+    NSMutableString *ms = [[NSMutableString alloc] initWithCapacity:255];
     for (int i = 0; i < _worldTotalSize; i ++) {
-        NSInteger aliveForNext = [self adjustDestiny:[_world[i] integerValue]];
-        _nextWorld[i] = @(aliveForNext);
+        if (i % _worldWidth == 0) {
+            [ms appendString:@"\n"];
+        }
+        [ms appendFormat:@"%@", _world[i]];
     }
-    for (int i = 0; i < _worldTotalSize; i ++) {
-        _world[i] = _nextWorld[i];
+    NSLog(@"%@", ms);
+}
+
+- (void)timeTick:(id)t
+{
+    if (!_isWorldStop) {
+        for (int i = 0; i < _worldTotalSizef; i ++) {
+            NSInteger aliveForNext = [self adjustDestiny:i];
+            _nextWorld[i] = @(aliveForNext);
+        }
+    
+    
+        NSMutableArray *temp = _nextWorld;
+        _nextWorld = _world;
+        _world = temp;
     }
+
     [self setNeedsDisplay];
 }
 
@@ -116,15 +163,15 @@
 // An empty implementation adversely affects performance during animation.
 - (void)drawRect:(CGRect)rect {
     CGContextRef context = UIGraphicsGetCurrentContext();
-    
+    CGContextSetFillColorWithColor(context, [UIColor blackColor].CGColor);
+    CGContextFillRect(context, rect);
     CGContextSetFillColorWithColor(context, [UIColor whiteColor].CGColor);
     for (int i = 0; i < _worldTotalSize; i ++) {
         NSInteger isDrawPoint = [_world[i] integerValue];
         if (isDrawPoint) {
             NSInteger x = i%_worldWidth;
             NSInteger y = i/_worldWidth;
-            CGContextFillRect(context, CGRectMake(x,y,1,1));
-//            NSLog(@"%ld,%ld",x,y);
+            CGContextFillRect(context, CGRectMake(x*PointInPixels+1,y*PointInPixels+1,PointInPixels-1,PointInPixels-1));
         }
     }
     

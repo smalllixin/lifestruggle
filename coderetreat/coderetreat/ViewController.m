@@ -19,7 +19,7 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     // Do any additional setup after loading the view, typically from a nib.
-    LifeStruggleView *worldView = [[LifeStruggleView alloc] initWithFrame:self.view.frame];
+    LifeStruggleView *worldView = [[LifeStruggleView alloc] initWithFrame:self.view.bounds];
     [self.view addSubview:worldView];
     [_button addTarget:self action:@selector(btnPress:) forControlEvents:UIControlEventTouchUpInside];
     _worldView = worldView;
